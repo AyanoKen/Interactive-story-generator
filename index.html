@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interactive Fantasy Adventure</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body class="bg-light">
+    <div class="container py-5">
+        <div class="text-center mb-4">
+            <h1 class="display-5">Interactive Fantasy Adventure</h1>
+            <p class="lead">Guide your adventure with your choices, and see how the story unfolds!</p>
+        </div>
+
+        <div class="mb-4">
+            <textarea id="prompt" class="form-control" rows="4" placeholder="What do you do next? Describe your action..."></textarea>
+        </div>
+
+        <div class="text-center mb-4">
+            <button class="btn btn-primary btn-lg" onclick="generateResponse()">Continue</button>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">Story Progress</h5>
+                <pre id="story" class="card-text bg-dark text-white p-3 rounded" style="min-height: 300px; overflow-y: auto;"></pre>
+            </div>
+        </div>
+    </div>
+
+    
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.6/dist/umd/popper.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.min.js"></script>
+
+    <script>
+        const storyContext = [];
+        const maxContextLength = 5; 
+
+        async function generateResponse() {
+            const userInput = document.getElementById("prompt").value;
+            storyContext.push({ role: "user", content: userInput });
+            document.getElementById("prompt").value = ''; 
+
+            const apiKey = 'YOUR-OPENAI-APIKEY';
+            const apiUrl = 'https://api.openai.com/v1/chat/completions';
+
+            
+            const instructions = "You are a creative and vivid Dungeon Master, narrating an epic fantasy story. Continue the story based on the recent events provided.";
+            const contextSnippet = storyContext
+                .slice(-maxContextLength)
+                .map(entry => entry.content)
+                .join("\n");
+
+            const fullPrompt = `${instructions}\n\nStory so far:\n${contextSnippet}\n\nNarrate what happens next in detail.`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        model: 'gpt-4',
+                        messages: [
+                            { role: "system", content: instructions },
+                            { role: "user", content: `Story so far:\n${contextSnippet}\n\nContinue the story.` }
+                        ],
+                        max_tokens: 600,
+                        temperature: 0.7, 
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const aiResponse = data.choices[0].message.content.trim();
+                    storyContext.push({ role: "assistant", content: aiResponse });
+                    document.getElementById("story").innerText += `\nYou: ${userInput}\n\nDM: ${aiResponse}\n`;
+                } else {
+                    document.getElementById("story").innerText += `\nError: ${response.status} - ${response.statusText}`;
+                }
+            } catch (error) {
+                document.getElementById("story").innerText += `\nRequest failed: ${error.message}`;
+            }
+        }
+    </script>
+</body>
+</html>
